@@ -1,4 +1,11 @@
 public with sharing class SalesSummaryService {
+    public class SummaryException extends Exception {
+    }
+
+    private static final String OWN_SUMMARY_ONLY = 'You can only view your own sales summary.';
+    private static final String SELECT_ACTIVE_USER = 'Select an active user.';
+    private static final String SELECT_CURRENCY = 'Select NIS or USD.';
+    private static final Integer RATE_SCALE = 10;
     private static final List<String> MONTH_NAMES = new List<String>{
         'January',
         'February',
@@ -43,14 +50,30 @@ public with sharing class SalesSummaryService {
     }
 
     public static Summary load(Id userId, String currencyCode) {
-        return build(userId, organizationToday(), currencyCode);
+        if (
+            userId != null &&
+            userId != UserInfo.getUserId() &&
+            !FeatureManagement.checkPermission('Select_Any_Salesperson')
+        ) {
+            throw new SummaryException(OWN_SUMMARY_ONLY);
+        }
+        if (userId == null || !isActiveUser(userId)) {
+            throw new SummaryException(SELECT_ACTIVE_USER);
+        }
+        try {
+            return build(userId, organizationToday(), currencyCode);
+        } catch (SalesSummarySelector.AccessException ex) {
+            throw new SummaryException(ex.getMessage());
+        }
     }
 
-    public static Summary build(Id userId, Date asOf) {
+    @TestVisible
+    private static Summary build(Id userId, Date asOf) {
         return build(userId, asOf, 'ILS');
     }
 
-    public static Summary build(Id userId, Date asOf, String currencyCode) {
+    @TestVisible
+    private static Summary build(Id userId, Date asOf, String currencyCode) {
         String target = normalizedCurrency(currencyCode);
         SalesSummarySelector selector = new SalesSummarySelector();
         return fromGroups(
@@ -78,19 +101,23 @@ public with sharing class SalesSummaryService {
         String currencyCode
     ) {
         String target = normalizedCurrency(currencyCode);
-        Decimal ilsRate = rates.get('ILS');
-        Decimal targetRate = rates.get(target);
+        Decimal ilsRate = null;
+        Decimal targetRate = null;
+        if (!groups.isEmpty()) {
+            ilsRate = rateFor(rates, 'ILS');
+            targetRate = rateFor(rates, target);
+        }
         Decimal threshold = Decimal.valueOf(System.Label.Sales_Summary_Low_Amount);
         Map<String, Decimal> ilsByMonth = new Map<String, Decimal>();
         Map<String, Decimal> displayByMonth = new Map<String, Decimal>();
 
         for (SalesSummarySelector.MonthCurrencyTotal bucket : groups) {
-            Decimal sourceRate = rates.get(bucket.currencyCode);
             String key = monthKey(bucket.year, bucket.month);
             Decimal ilsCurrent = ilsByMonth.containsKey(key) ? ilsByMonth.get(key) : 0;
             Decimal displayCurrent = displayByMonth.containsKey(key) ? displayByMonth.get(key) : 0;
-            ilsByMonth.put(key, ilsCurrent + (bucket.total * (ilsRate / sourceRate)));
-            displayByMonth.put(key, displayCurrent + (bucket.total * (targetRate / sourceRate)));
+            Decimal amount = bucket.total == null ? 0 : bucket.total;
+            ilsByMonth.put(key, ilsCurrent + convert(amount, ilsRate, rates.get(bucket.currencyCode)));
+            displayByMonth.put(key, displayCurrent + convert(amount, targetRate, rates.get(bucket.currencyCode)));
         }
 
         Summary summary = new Summary();
@@ -132,9 +159,27 @@ public with sharing class SalesSummaryService {
         if (currencyCode.equalsIgnoreCase('USD')) {
             return 'USD';
         }
-        AuraHandledException ex = new AuraHandledException('Select NIS or USD.');
-        ex.setMessage('Select NIS or USD.');
-        throw ex;
+        throw new SummaryException(SELECT_CURRENCY);
+    }
+
+    private static Boolean isActiveUser(Id userId) {
+        List<User> users = [SELECT IsActive FROM User WHERE Id = :userId];
+        return !users.isEmpty() && users[0].IsActive;
+    }
+
+    private static Decimal rateFor(Map<String, Decimal> rates, String currencyCode) {
+        Decimal rate = rates == null ? null : rates.get(currencyCode);
+        if (rate == null || rate == 0) {
+            throw new SummaryException(SELECT_CURRENCY);
+        }
+        return rate;
+    }
+
+    private static Decimal convert(Decimal amount, Decimal targetRate, Decimal sourceRate) {
+        if (sourceRate == null || sourceRate == 0) {
+            throw new SummaryException(SELECT_CURRENCY);
+        }
+        return amount * targetRate.divide(sourceRate, RATE_SCALE, RoundingMode.HALF_UP);
     }
 
     @TestVisible

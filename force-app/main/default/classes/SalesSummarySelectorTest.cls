@@ -38,23 +38,40 @@ private class SalesSummarySelectorTest {
 
     @IsTest
     static void includesSaleWhoseRecordOwnerIsSomeoneElse() {
-        User accountOwner = insertUser('acct');
+        User accountOwner = insertUser('acct', 'Standard User');
+        assignSummaryUser(accountOwner.Id);
         User recordOwner = insertUser('rec');
         Id customerId = insertAccount(accountOwner.Id, 'Account Owner Customer');
         insertSale(customerId, recordOwner.Id, AS_OF, 12, 'ILS');
 
-        List<SalesSummarySelector.MonthCurrencyTotal> groups = new SalesSummarySelector()
-            .groupedSales(
-                accountOwner.Id,
-                SalesSummaryService.windowStart(AS_OF),
-                SalesSummaryService.windowEnd(AS_OF)
-            );
+        System.runAs(accountOwner) {
+            List<SalesSummarySelector.MonthCurrencyTotal> groups = new SalesSummarySelector()
+                .groupedSales(
+                    accountOwner.Id,
+                    SalesSummaryService.windowStart(AS_OF),
+                    SalesSummaryService.windowEnd(AS_OF)
+                );
 
-        Assert.areEqual(1, groups.size());
-        Assert.areEqual(12, groups[0].total);
+            Assert.areEqual(1, groups.size(), 'A sale owned by someone else still counts for the account owner.');
+            Assert.areEqual(12, groups[0].total);
+        }
     }
 
+    private static void assignSummaryUser(Id userId) {
+        insert new PermissionSetAssignment(
+            AssigneeId = userId,
+            PermissionSetId = [SELECT Id FROM PermissionSet WHERE Name = 'Sales_Summary_User' LIMIT 1]
+            .Id
+        );
+    }
+
+    private static Id standardRoleId;
+
     private static User insertUser(String alias) {
+        return insertUser(alias, 'System Administrator');
+    }
+
+    private static User insertUser(String alias, String profileName) {
         String unique = alias + String.valueOf(Math.abs(Crypto.getRandomInteger()));
         User person = new User(
             Alias = alias.left(8),
@@ -64,11 +81,21 @@ private class SalesSummarySelectorTest {
             LanguageLocaleKey = 'en_US',
             LocaleSidKey = 'en_US',
             CommunityNickname = unique.left(40),
-            ProfileId = [SELECT Id FROM Profile WHERE Name = 'System Administrator' LIMIT 1]
+            ProfileId = [SELECT Id FROM Profile WHERE Name = :profileName LIMIT 1]
             .Id,
             TimeZoneSidKey = 'America/Los_Angeles',
             Username = unique + '@example.com'
         );
+        if (profileName == 'Standard User') {
+            if (standardRoleId == null) {
+                String token = ('S' + String.valueOf(DateTime.now().getTime()) + String.valueOf(Math.abs(Crypto.getRandomInteger())))
+                    .left(40);
+                UserRole role = new UserRole(Name = token, DeveloperName = token);
+                insert role;
+                standardRoleId = role.Id;
+            }
+            person.UserRoleId = standardRoleId;
+        }
         insert person;
         return person;
     }

@@ -72,7 +72,10 @@ private class SalesSummaryServiceTest {
         insertSale(owner.Id, AS_OF, 100, 'ILS');
         insertSale(owner.Id, AS_OF, 10, 'USD');
         Map<String, Decimal> rates = new SalesSummarySelector().conversionRates();
-        Decimal expectedMonth = (100 + (10 * rates.get('ILS') / rates.get('USD'))).setScale(2, RoundingMode.HALF_UP);
+        Decimal expectedMonth = (
+                100 + (10 * rates.get('ILS').divide(rates.get('USD'), 10, RoundingMode.HALF_UP))
+            )
+            .setScale(2, RoundingMode.HALF_UP);
 
         SalesSummaryService.Summary summary = SalesSummaryService.build(owner.Id, AS_OF);
 
@@ -150,7 +153,7 @@ private class SalesSummaryServiceTest {
 
         SalesSummaryService.MonthTotal november = SalesSummaryService.fromGroups(
                 groups,
-                new Map<String, Decimal>{ 'ILS' => 1 },
+                new Map<String, Decimal>{ 'ILS' => Decimal.valueOf(1).setScale(0) },
                 AS_OF
             )
             .months[11];
@@ -214,8 +217,52 @@ private class SalesSummaryServiceTest {
                 'EUR'
             );
             Assert.fail('EUR is rejected.');
-        } catch (AuraHandledException ex) {
+        } catch (SalesSummaryService.SummaryException ex) {
             Assert.areEqual('Select NIS or USD.', ex.getMessage());
+        }
+    }
+
+    @IsTest
+    static void rejectsAMissingConversionRate() {
+        assertMissingRate(
+            new List<SalesSummarySelector.MonthCurrencyTotal>{ currencyGroup(2026, 11, 'ILS', 10) },
+            new Map<String, Decimal>{ 'USD' => 1 }
+        );
+        assertMissingRate(
+            new List<SalesSummarySelector.MonthCurrencyTotal>{ currencyGroup(2026, 11, 'EUR', 10) },
+            new Map<String, Decimal>{ 'ILS' => 3.18, 'USD' => 1 }
+        );
+    }
+
+    @IsTest
+    static void convertsWhenTheRateScaleIsZero() {
+        SalesSummaryService.MonthTotal november = SalesSummaryService.fromGroups(
+                new List<SalesSummarySelector.MonthCurrencyTotal>{ currencyGroup(2026, 11, 'USD', 1) },
+                new Map<String, Decimal>{
+                    'ILS' => Decimal.valueOf(1).setScale(0),
+                    'USD' => Decimal.valueOf(3).setScale(0)
+                },
+                AS_OF
+            )
+            .months[11];
+
+        Assert.areEqual(0.33, november.amount);
+    }
+
+    @IsTest
+    static void loadRejectsAnotherUserBeforeReadingTheUser() {
+        User salesperson = insertStandardUser('gate');
+        assignPermissionSet(salesperson.Id, 'Sales_Summary_User');
+        User other = insertStandardUser('other');
+        User inactive = insertStandardUser('gone');
+        inactive.IsActive = false;
+        update inactive;
+
+        System.runAs(salesperson) {
+            Integer queriesBefore = Limits.getQueries();
+            assertSummaryRejected(other.Id, 'You can only view your own sales summary.');
+            assertSummaryRejected(inactive.Id, 'You can only view your own sales summary.');
+            Assert.areEqual(0, Limits.getQueries() - queriesBefore, 'The permission check runs before any query.');
         }
     }
 
@@ -253,7 +300,44 @@ private class SalesSummaryServiceTest {
         return row;
     }
 
+    private static void assertMissingRate(
+        List<SalesSummarySelector.MonthCurrencyTotal> groups,
+        Map<String, Decimal> rates
+    ) {
+        try {
+            SalesSummaryService.fromGroups(groups, rates, AS_OF);
+            Assert.fail('A missing conversion rate is rejected.');
+        } catch (SalesSummaryService.SummaryException ex) {
+            Assert.areEqual('Select NIS or USD.', ex.getMessage());
+        }
+    }
+
+    private static void assertSummaryRejected(Id userId, String message) {
+        try {
+            SalesSummaryService.load(userId, null);
+            Assert.fail(message);
+        } catch (SalesSummaryService.SummaryException ex) {
+            Assert.areEqual(message, ex.getMessage());
+        }
+    }
+
+    private static void assignPermissionSet(Id userId, String permissionSetName) {
+        insert new PermissionSetAssignment(
+            AssigneeId = userId,
+            PermissionSetId = [SELECT Id FROM PermissionSet WHERE Name = :permissionSetName LIMIT 1]
+            .Id
+        );
+    }
+
+    private static User insertStandardUser(String alias) {
+        return insertUser(alias, 'Standard User');
+    }
+
     private static User insertUser(String alias) {
+        return insertUser(alias, 'System Administrator');
+    }
+
+    private static User insertUser(String alias, String profileName) {
         String unique = alias + String.valueOf(Math.abs(Crypto.getRandomInteger()));
         User person = new User(
             Alias = alias.left(8),
@@ -263,7 +347,7 @@ private class SalesSummaryServiceTest {
             LanguageLocaleKey = 'en_US',
             LocaleSidKey = 'en_US',
             CommunityNickname = unique.left(40),
-            ProfileId = [SELECT Id FROM Profile WHERE Name = 'System Administrator' LIMIT 1]
+            ProfileId = [SELECT Id FROM Profile WHERE Name = :profileName LIMIT 1]
             .Id,
             TimeZoneSidKey = 'America/Los_Angeles',
             Username = unique + '@example.com'
