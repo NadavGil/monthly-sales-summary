@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomLabels xmlns="http://soap.sforce.com/2006/04/metadata">
+    <labels>
+        <fullName>Sales_Summary_Low_Amount</fullName>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Monthly total below this ILS amount is highlighted.</shortDescription>
+        <value>1000</value>
+    </labels>
+</CustomLabels>

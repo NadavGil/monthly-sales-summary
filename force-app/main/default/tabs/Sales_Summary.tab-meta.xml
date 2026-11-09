@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomTab xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Monthly sales summary by salesperson.</description>
+    <flexiPage>Sales_Summary</flexiPage>
+    <label>Sales Summary</label>
+    <motif>Custom53: Money</motif>
+</CustomTab>

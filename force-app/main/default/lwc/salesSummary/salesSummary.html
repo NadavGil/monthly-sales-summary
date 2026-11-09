@@ -1,0 +1,46 @@
+<template>
+    <lightning-card title="Sales Summary">
+        <div class="slds-p-horizontal_medium slds-p-bottom_medium slds-is-relative summary">
+            <lightning-record-picker
+                label="Salesperson"
+                object-api-name="User"
+                placeholder="Search active users"
+                value={salespersonId}
+                disabled={pickerDisabled}
+                filter={userFilter}
+                onchange={handleSalespersonChange}
+            ></lightning-record-picker>
+            <lightning-radio-group
+                class="slds-m-top_small"
+                label="Currency"
+                options={currencyOptions}
+                value={currencyCode}
+                type="button"
+                onchange={handleCurrencyChange}
+            ></lightning-radio-group>
+            <template lwc:if={loading}>
+                <lightning-spinner alternative-text="Loading sales summary" size="small"></lightning-spinner>
+            </template>
+            <template lwc:if={showTable}>
+                <div class="slds-m-top_medium">
+                    <lightning-datatable
+                        key-field="key"
+                        data={rows}
+                        columns={columns}
+                        hide-checkbox-column
+                    ></lightning-datatable>
+                    <p class="slds-m-top_small">
+                        <span class="slds-m-right_x-small">Total</span>
+                        <lightning-formatted-number
+                            value={total}
+                            format-style="currency"
+                            currency-code={displayCurrency}
+                            minimum-fraction-digits="2"
+                            maximum-fraction-digits="2"
+                        ></lightning-formatted-number>
+                    </p>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
+</template>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Currency_Is_ILS_Or_USD</fullName>
+    <active>true</active>
+    <description>A sale can be saved only in ILS or USD.</description>
+    <errorConditionFormula>AND(
+  NOT(ISPICKVAL(CurrencyIsoCode, &quot;ILS&quot;)),
+  NOT(ISPICKVAL(CurrencyIsoCode, &quot;USD&quot;))
+)</errorConditionFormula>
+    <errorDisplayField>CurrencyIsoCode</errorDisplayField>
+    <errorMessage>A sale must be in ILS or USD.</errorMessage>
+</ValidationRule>
