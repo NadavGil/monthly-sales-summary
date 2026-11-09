@@ -22,6 +22,7 @@ sf apex run --file scripts/seed.apex --target-org dev-edition
 sf apex run --file scripts/live.apex --target-org dev-edition
 sf apex run --file scripts/salesman.apex --target-org dev-edition
 sf apex run --file scripts/review-admin.apex --target-org dev-edition
+sf apex run --file scripts/review-admin.apex --target-org dev-edition
 ```
 
 Then open the Sales app → Sales Summary. On a new org, add the tab once: Setup → App Manager → Sales → Edit → Navigation Items → add Sales Summary → Save.

@@ -52,9 +52,10 @@ The Sales Summary tab was added to the standard Sales app in App Manager. That n
 
 ## Access
 
-The team can sign in as **Review Administrator**, a System Administrator created by `scripts/review-admin.apex`. The username is `review.admin.00DjV000008CSTlUAO@agentforce.com` and the password is `Review2026`. The email is the admin's email. The script also assigns `Sales_Summary_User` and `Sales_Manager`, so the salesperson lookup is editable. Running it again does not reset the password.
+The team can sign in as **Review Administrator**, a System Administrator created by `scripts/review-admin.apex`. The username is `review.admin.00DjV000008CSTlUAO@agentforce.com` and the password is `Review2026`. The email is the admin's email. The script also assigns `Sales_Summary_User` and `Sales_Manager`, so the salesperson lookup is editable. The first run creates the user. The second run adds four customers and 18 sales owned by that user: Ashdod Port Services, Sharon Textiles, Dead Sea Minerals, and Acre Fisheries. At 3.18 the NIS total is 22,671.20. December, February, April, June, August, and October are the red months. June includes a −200 ILS return. Opening Sales Summary as this user shows that book. A later run does not reset the password or add a second book.
 
 ```bash
+sf apex run --file scripts/review-admin.apex --target-org dev-edition
 sf apex run --file scripts/review-admin.apex --target-org dev-edition
 ```
 
