@@ -12,7 +12,7 @@ The project folder is `~/Desktop/monthly-sales-summary`. Requirements, the plan,
 | Instance | `https://orgfarm-cff7fcde60-dev-ed.develop.my.salesforce.com` |
 | CLI | `@salesforce/cli/2.157.8` |
 
-This user is a System Administrator and is assigned `Sales_Summary_User` and `Sales_Manager`. No other user was created.
+This user is a System Administrator and is assigned `Sales_Summary_User` and `Sales_Manager`. `scripts/review-admin.apex` creates a second System Administrator for the reviewing team. `scripts/salesman.apex` creates Sample Salesperson.
 
 Multi-currency is on. The corporate currency is **USD**, conversion rate **1**. **ILS** is active, conversion rate **3.18** (1 USD = 3.18 ILS), set 9 Nov 2026. Advanced Currency Management is off. Dated rates are not used. Deploy does not change these rates. Totals on the screen are still converted to ILS with the current static rate, so a later rate change updates past months.
 
@@ -52,7 +52,13 @@ The Sales Summary tab was added to the standard Sales app in App Manager. That n
 
 ## Access
 
-The team deploys into an org where they are already System Administrator. Deploy does not create users. `scripts/salesman.apex` creates one sample salesperson when you run it.
+The team can sign in as **Review Administrator**, a System Administrator created by `scripts/review-admin.apex`. The username is `review.admin.00DjV000008CSTlUAO@agentforce.com` and the password is `Review2026`. The email is the admin's email. The script also assigns `Sales_Summary_User` and `Sales_Manager`, so the salesperson lookup is editable. Running it again does not reset the password.
+
+```bash
+sf apex run --file scripts/review-admin.apex --target-org dev-edition
+```
+
+`scripts/salesman.apex` creates one sample salesperson when you run it.
 
 A System Administrator does not receive `Select_Any_Salesperson` from the profile. Assign both permission sets to each admin who should use the screen:
 

@@ -418,7 +418,7 @@ Each guideline is met like this:
 | Design and build the data structure | `Sale__c` metadata in the repository |
 | A test class for every Apex class | The three test classes in the repository. The team runs them with the Salesforce CLI. |
 | Use standard components | The screen in Module 4 |
-| Grant System Administrator access to the team | The team deploys into an org where they are System Administrator. The repository does not create their users. |
+| Grant System Administrator access to the team | `scripts/review-admin.apex` creates Review Administrator on the shared org. The username and password are in `HANDOFF.md`. |
 | Document what was built and where to find it | `README.md` for deploy and test commands. `HANDOFF.md` for the Setup map. |
 | State business assumptions | `HANDOFF.md`, copied from the list below |
 
@@ -449,7 +449,7 @@ After deploy, each team member assigns `Sales_Summary_User` and `Sales_Manager` 
 
 ### Access
 
-The team uses the System Administrator profile they already have in the target org. Usernames are written in `HANDOFF.md` when a shared org is used. No user is created from a guessed email.
+On the shared org, the reviewing team signs in as Review Administrator. The username and password are in `HANDOFF.md`. The email is the running user's email. A guessed reviewer address is not used.
 
 A System Administrator still needs `Sales_Manager` to change the salesperson lookup, because the profile does not include `Select_Any_Salesperson`. Those admin users are assigned `Sales_Summary_User` and `Sales_Manager`.
 
