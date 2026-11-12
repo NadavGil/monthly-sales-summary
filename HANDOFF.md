@@ -12,7 +12,7 @@ The project folder is `~/Desktop/monthly-sales-summary`. Requirements, the plan,
 | Instance | `https://orgfarm-cff7fcde60-dev-ed.develop.my.salesforce.com` |
 | CLI | `@salesforce/cli/2.157.8` |
 
-This user is a System Administrator and is assigned `Sales_Summary_User` and `Sales_Manager`. `scripts/review-admin.apex` creates a second System Administrator for the reviewing team. `scripts/salesman.apex` creates Sample Salesperson.
+This user is a System Administrator and is assigned `Sales_Summary_User` and `Sales_Manager`. The reviewing team signs in as the two users in Access below. Review Administrator and Sample Salesperson are inactive.
 
 Multi-currency is on. The corporate currency is **USD**, conversion rate **1**. **ILS** is active, conversion rate **3.18** (1 USD = 3.18 ILS), set 9 Nov 2026. Advanced Currency Management is off. Dated rates are not used. Deploy does not change these rates. Totals on the screen are still converted to ILS with the current static rate, so a later rate change updates past months.
 
@@ -52,7 +52,22 @@ The Sales Summary tab was added to the standard Sales app in App Manager. That n
 
 ## Access
 
-The team can sign in as **Review Administrator**, a System Administrator created by `scripts/review-admin.apex`. The username is `review.admin.00DjV000008CSTlUAO@agentforce.com` and the password is `Review2026`. The email is the admin's email. The script also assigns `Sales_Summary_User` and `Sales_Manager`, so the salesperson lookup is editable. The first run creates the user. The second run adds four customers and 18 sales owned by that user: Ashdod Port Services, Sharon Textiles, Dead Sea Minerals, and Acre Fisheries. At 3.18 the NIS total is 22,671.20. December, February, April, June, August, and October are the red months. June includes a −200 ILS return. Opening Sales Summary as this user shows that book. A later run does not reset the password or add a second book.
+The org has four Salesforce licenses, so `scripts/reviewers.apex` deactivated **Review Administrator** and **Sample Salesperson** and created two System Administrators. Verification codes go to each reviewer's own email. Both have `Sales_Summary_User` and `Sales_Manager`, so the salesperson lookup is editable. The password for both is `Review2026`.
+
+| Reviewer | Username | Email | Book on open |
+| --- | --- | --- | --- |
+| orans | `orans.00DjV000008CSTlUAO@agentforce.com` | `orans@5555.co.il` | Ashdod Port Services, Sharon Textiles, Dead Sea Minerals, Acre Fisheries |
+| saharel | `saharel.00DjV000008CSTlUAO@agentforce.com` | `saharel@5555.co.il` | Galilee Produce, Eilat Dive Center, Jerusalem Stone |
+
+orans's book is the former Review Administrator book. At 3.18 the NIS total is 22,671.20. December, February, April, June, August, and October are the red months. June includes a −200 ILS return. saharel's book is the former Sample Salesperson book. At 3.18, September and October are the red months. Either reviewer can select the other user in the lookup.
+
+```bash
+sf apex run --file scripts/reviewers.apex --target-org dev-edition
+sf apex run --file scripts/reviewers.apex --target-org dev-edition
+sf apex run --file scripts/reviewers.apex --target-org dev-edition
+```
+
+The first run frees the licenses, the second creates the users, and the third moves the books. A later run does not reset the passwords or add records. `scripts/review-admin.apex` created the original Review Administrator before those licenses were reused.
 
 ```bash
 sf apex run --file scripts/review-admin.apex --target-org dev-edition
@@ -88,7 +103,7 @@ Running it again does not create a second pair. Sales already in the org stay. O
 sf apex run --file scripts/live.apex --target-org dev-edition
 ```
 
-`scripts/salesman.apex` creates **Sample Salesperson**, a Standard User with `Sales_Summary_User` only. The username is `sample.salesperson.00DjV000008CSTlUAO@agentforce.com` and the password is `Sales2026`. The email is the admin's email. This user owns Galilee Produce, Eilat Dive Center, and Jerusalem Stone. At 3.18, September and October are the red months. Select this user in the Salesperson lookup to see that book. Logging in as this user leaves the lookup on Sample Salesperson and disables it.
+`scripts/salesman.apex` created **Sample Salesperson**. On this org that user is inactive. Galilee Produce, Eilat Dive Center, and Jerusalem Stone now belong to saharel. At 3.18, September and October are the red months. Select saharel in the Salesperson lookup to see that book.
 
 ```bash
 sf apex run --file scripts/salesman.apex --target-org dev-edition

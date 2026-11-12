@@ -2,9 +2,11 @@
 // A user and an account cannot be created in the same execution. A later run does not reset the password or add a second book.
 
 String username = 'review.admin.' + UserInfo.getOrganizationId() + '@agentforce.com';
-List<User> existing = [SELECT Id FROM User WHERE Username = :username];
+List<User> existing = [SELECT Id, IsActive FROM User WHERE Username = :username];
 
-if (existing.isEmpty()) {
+if (!existing.isEmpty() && !existing[0].IsActive) {
+    System.debug('Review Administrator exists and is inactive. No records were created.');
+} else if (existing.isEmpty()) {
     Profile adminProfile = [SELECT Id FROM Profile WHERE Name = 'System Administrator' LIMIT 1];
     String nickname = ('review' + UserInfo.getOrganizationId()).left(40);
     User reviewAdmin = new User(

@@ -2,9 +2,11 @@
 // A user and an account cannot be created in the same execution. A third run does nothing.
 
 String username = 'sample.salesperson.' + UserInfo.getOrganizationId() + '@agentforce.com';
-List<User> existing = [SELECT Id FROM User WHERE Username = :username];
+List<User> existing = [SELECT Id, IsActive FROM User WHERE Username = :username];
 
-if (existing.isEmpty()) {
+if (!existing.isEmpty() && !existing[0].IsActive) {
+    System.debug('Sample Salesperson exists and is inactive. No records were created.');
+} else if (existing.isEmpty()) {
     Profile standardUser = [SELECT Id FROM Profile WHERE Name = 'Standard User' LIMIT 1];
     String nickname = ('sample' + UserInfo.getOrganizationId()).left(40);
     User salesman = new User(
